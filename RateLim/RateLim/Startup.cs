@@ -45,6 +45,8 @@ namespace RateLim
 
             app.UseHttpsRedirection();
 
+            app.UseMiddleware<Middleware.RateLimitMiddleware>();
+
             app.UseRouting();
 
             app.UseAuthorization();
