@@ -39,6 +39,9 @@ namespace RateLim.Middleware
             {
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             }
+
+            context.Response.Headers.Add("X-RateLimit-Remaining", (Limit - count).ToString());
+            context.Response.Headers.Add("X-RateLimit-Reset", DateTime.Now.Add(result.Expiry ?? new TimeSpan(1, 0, 0)).ToString("yyyy-MM-dd HH:mm:ss"));
         }
     }
 
