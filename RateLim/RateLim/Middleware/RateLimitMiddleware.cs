@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using System;
 using System.Collections.Generic;
@@ -19,7 +19,16 @@ namespace RateLim.Middleware
 
         public async Task Invoke(HttpContext context)
         {
-            await _next(context);
+            bool pass = false;
+
+            if (pass)
+            {
+                await _next(context);
+            }
+            else
+            {
+                context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+            }
         }
     }
 
