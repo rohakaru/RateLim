@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,10 +12,12 @@ namespace RateLim.Middleware
     public class RateLimitMiddleware
     {
         private readonly RequestDelegate _next;
+        private readonly IConnectionMultiplexer _redis;
 
-        public RateLimitMiddleware(RequestDelegate next)
+        public RateLimitMiddleware(RequestDelegate next, IConnectionMultiplexer redis)
         {
             _next = next;
+            _redis = redis;
         }
 
         public async Task Invoke(HttpContext context)
