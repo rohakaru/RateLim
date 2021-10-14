@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
@@ -13,12 +14,19 @@ namespace RateLim.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly IConnectionMultiplexer _redis;
-        private const int Limit = 1000;
+        private readonly int Limit;
+        private readonly int ExpireHour;
+        private readonly int ExpireMinute;
+        private readonly int ExpireSecond;
 
-        public RateLimitMiddleware(RequestDelegate next, IConnectionMultiplexer redis)
+        public RateLimitMiddleware(RequestDelegate next, IConnectionMultiplexer redis, IConfiguration config)
         {
             _next = next;
             _redis = redis;
+            Limit = Convert.ToInt32(config["Redis:Limit"]);
+            ExpireHour = Convert.ToInt32(config["Redis:Expiry:Hour"]);
+            ExpireMinute = Convert.ToInt32(config["Redis:Expiry:Minute"]);
+            ExpireSecond = Convert.ToInt32(config["Redis:Expiry:Second"]);
         }
 
         public async Task Invoke(HttpContext context)
@@ -32,7 +40,7 @@ namespace RateLim.Middleware
 
             if (pass)
             {
-                await data.StringSetAsync(remoteIpAddress, ++count, result.Expiry ?? new TimeSpan(1, 0, 0));
+                await data.StringSetAsync(remoteIpAddress, ++count, result.Expiry ?? new TimeSpan(ExpireHour, ExpireMinute, ExpireSecond));
                 await _next(context);
             }
             else
@@ -41,7 +49,7 @@ namespace RateLim.Middleware
             }
 
             context.Response.Headers.Add("X-RateLimit-Remaining", (Limit - count).ToString());
-            context.Response.Headers.Add("X-RateLimit-Reset", DateTime.Now.Add(result.Expiry ?? new TimeSpan(1, 0, 0)).ToString("yyyy-MM-dd HH:mm:ss"));
+            context.Response.Headers.Add("X-RateLimit-Reset", DateTime.Now.Add(result.Expiry ?? new TimeSpan(ExpireHour, ExpireMinute, ExpireSecond)).ToString("yyyy-MM-dd HH:mm:ss"));
         }
     }
 
