@@ -13,6 +13,7 @@ namespace RateLim.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly IConnectionMultiplexer _redis;
+        private const int Limit = 1000;
 
         public RateLimitMiddleware(RequestDelegate next, IConnectionMultiplexer redis)
         {
@@ -22,10 +23,16 @@ namespace RateLim.Middleware
 
         public async Task Invoke(HttpContext context)
         {
-            bool pass = false;
+            IDatabase data = _redis.GetDatabase();
+            string remoteIpAddress = context.Connection.RemoteIpAddress.ToString().Replace(':', ';');//IPv6的冒號與redis分層符號相同，所以換成分號
+            RedisValueWithExpiry result = await data.StringGetWithExpiryAsync(remoteIpAddress);
+
+            int count = Convert.ToInt32(result.Value);
+            bool pass = (count < Limit);
 
             if (pass)
             {
+                await data.StringSetAsync(remoteIpAddress, ++count, result.Expiry ?? new TimeSpan(1, 0, 0));
                 await _next(context);
             }
             else
