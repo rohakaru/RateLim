@@ -1,0 +1,18 @@
+version: '3.7'
+
+services:
+  web:
+    depends_on:
+      - "redis_image"
+    build:
+      context: ./RateLim
+      dockerfile: Dockerfile
+    ports:
+      - "5000:80"
+      - "5001:443"
+
+  redis_image:
+    image: redis:6.2.6
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
