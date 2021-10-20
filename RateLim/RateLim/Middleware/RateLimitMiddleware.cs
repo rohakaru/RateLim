@@ -40,7 +40,9 @@ namespace RateLim.Middleware
 
             if (pass)
             {
-                await data.StringSetAsync(remoteIpAddress, ++count, result.Expiry ?? new TimeSpan(ExpireHour, ExpireMinute, ExpireSecond));
+                await data.StringIncrementAsync(remoteIpAddress);
+                if (result.Expiry is null)
+                    await data.KeyExpireAsync(remoteIpAddress, new TimeSpan(ExpireHour, ExpireMinute, ExpireSecond));
                 await _next(context);
             }
             else
@@ -48,6 +50,8 @@ namespace RateLim.Middleware
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             }
 
+            result = await data.StringGetWithExpiryAsync(remoteIpAddress);
+            count = Convert.ToInt32(result.Value);
             context.Response.Headers.Add("X-RateLimit-Remaining", (Limit - count).ToString());
             context.Response.Headers.Add("X-RateLimit-Reset", DateTime.Now.Add(result.Expiry ?? new TimeSpan(ExpireHour, ExpireMinute, ExpireSecond)).ToString("yyyy-MM-dd HH:mm:ss"));
         }
