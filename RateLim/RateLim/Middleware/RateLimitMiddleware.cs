@@ -35,12 +35,11 @@ namespace RateLim.Middleware
             string remoteIpAddress = context.Connection.RemoteIpAddress.ToString().Replace(':', ';');//IPv6的冒號與redis分層符號相同，所以換成分號
             RedisValueWithExpiry result = await data.StringGetWithExpiryAsync(remoteIpAddress);
 
-            int count = Convert.ToInt32(result.Value);
-            bool pass = (count < Limit);
+            int count = (int)await data.StringIncrementAsync(remoteIpAddress);
+            bool pass = (count <= Limit);
 
             if (pass)
-            {
-                await data.StringIncrementAsync(remoteIpAddress);
+            {                
                 if (result.Expiry is null)
                     await data.KeyExpireAsync(remoteIpAddress, new TimeSpan(ExpireHour, ExpireMinute, ExpireSecond));
                 await _next(context);
@@ -50,8 +49,6 @@ namespace RateLim.Middleware
                 context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             }
 
-            result = await data.StringGetWithExpiryAsync(remoteIpAddress);
-            count = Convert.ToInt32(result.Value);
             context.Response.Headers.Add("X-RateLimit-Remaining", (Limit - count).ToString());
             context.Response.Headers.Add("X-RateLimit-Reset", DateTime.Now.Add(result.Expiry ?? new TimeSpan(ExpireHour, ExpireMinute, ExpireSecond)).ToString("yyyy-MM-dd HH:mm:ss"));
         }
